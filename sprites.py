@@ -1,11 +1,128 @@
 import pygame
-from config import WIDTH, HEIGHT, PLAYER_SPEED, BULLET_SPEED, PLAYER_COLOR, BULLET_COLOR, ENEMY_COLOR
+import os
+from config import WIDTH, HEIGHT, PLAYER_SPEED, BULLET_SPEED
+
+# threshold for alpha when detecting sprite regions (for cropping lasers)
+ALPHA_THRESHOLD = 64
+
+# Sprite sheet constants (deferred loading until after display init)
+_SPRITE_SHEET_PATH = os.path.join(os.path.dirname(__file__), 'spritesheet.png')
+_SPRITE_SHEET = None
+_SPRITE_CACHE = {}
+_SHEET_COLS = 4
+_SHEET_ROWS = 4
+_CELL_WIDTH = None
+_CELL_HEIGHT = None
+
+def _load_sheet():
+    """Load and convert the sprite sheet once the display is initialized."""
+    global _SPRITE_SHEET, _CELL_WIDTH, _CELL_HEIGHT
+    if _SPRITE_SHEET is None:
+        sheet = pygame.image.load(_SPRITE_SHEET_PATH)
+        _SPRITE_SHEET = sheet.convert_alpha()
+        _CELL_WIDTH = _SPRITE_SHEET.get_width() // _SHEET_COLS
+        _CELL_HEIGHT = _SPRITE_SHEET.get_height() // _SHEET_ROWS
+    return _SPRITE_SHEET
+
+def _get_sprite(col, row):
+    """Extract a single sprite cell from the sheet."""
+    key = (col, row)
+    if key in _SPRITE_CACHE:
+        return _SPRITE_CACHE[key]
+    sheet = _load_sheet()
+    rect = pygame.Rect(col * _CELL_WIDTH, row * _CELL_HEIGHT, _CELL_WIDTH, _CELL_HEIGHT)
+    temp = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
+    temp.blit(sheet, (0, 0), rect)
+    # trim any transparent border around the sprite
+    bbox = temp.get_bounding_rect()
+    if bbox.width and bbox.height:
+        image = temp.subsurface(bbox).copy()
+    else:
+        image = temp
+    _SPRITE_CACHE[key] = image
+    return image
+
+def get_enemy_sprite():
+    # crisp scaling for enemy
+    return pygame.transform.smoothscale(_get_sprite(0, 0), (40, 25))
+
+def get_player_sprite():
+    # crisp scaling for player
+    return pygame.transform.smoothscale(_get_sprite(0, 2), (50, 30))
+
+def get_enemy_laser_sprite():
+    """Extract a single enemy laser sprite, crop out one beam, then scale and brighten."""
+    # ensure sheet loaded
+    sheet = _load_sheet()
+    # full cell
+    cw, ch = _CELL_WIDTH, _CELL_HEIGHT
+    cell_rect = pygame.Rect(2 * cw, 3 * ch, cw, ch)
+    cell = sheet.subsurface(cell_rect).copy()
+    # trim transparent border
+    br = cell.get_bounding_rect()
+    bs = cell.subsurface(br).copy()
+    # find contiguous x-runs of non-transparent pixels
+    w, h = bs.get_size()
+    runs = []
+    start = None
+    for x in range(w):
+        non_empty = False
+        for y in range(h):
+            if bs.get_at((x, y)).a > ALPHA_THRESHOLD:
+                non_empty = True
+                break
+        if non_empty:
+            if start is None:
+                start = x
+        else:
+            if start is not None:
+                runs.append((start, x - 1))
+                start = None
+    if start is not None:
+        runs.append((start, w - 1))
+    # pick first run for enemy
+    if runs:
+        xs, xe = runs[0]
+        beam = bs.subsurface(pygame.Rect(xs, 0, xe - xs + 1, h)).copy()
+    else:
+        beam = bs
+    # scale down and brighten enemy laser
+    sprite = pygame.transform.smoothscale(beam, (8, 24))
+    bright = sprite.copy()
+    bright.fill((150, 150, 150), special_flags=pygame.BLEND_RGB_ADD)
+    return bright
+
+def get_player_laser_sprite():
+    """Extract a single player laser sprite, crop out one beam, then scale and brighten."""
+    sheet = _load_sheet()
+    cw, ch = _CELL_WIDTH, _CELL_HEIGHT
+    cell_rect = pygame.Rect(3 * cw, 3 * ch, cw, ch)
+    cell = sheet.subsurface(cell_rect).copy()
+    # trim transparent border
+    br = cell.get_bounding_rect()
+    bs = cell.subsurface(br).copy()
+    # split right half for player laser
+    w, h = bs.get_size()
+    half = w // 2
+    beam = bs.subsurface(pygame.Rect(half, 0, w - half, h)).copy()
+    # scale down to slightly smaller laser
+    sprite = pygame.transform.smoothscale(beam, (6, 18))
+    # moderate brighten: add to both color and alpha for visibility
+    bright = sprite.copy()
+    bright.fill((150, 150, 150, 150), special_flags=pygame.BLEND_RGBA_ADD)
+    # ensure any visible pixel is fully opaque
+    bw, bh = bright.get_size()
+    for bx in range(bw):
+        for by in range(bh):
+            r, g, b, a = bright.get_at((bx, by))
+            if a != 0:
+                bright.set_at((bx, by), (r, g, b, 255))
+    return bright
 
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = pygame.Surface((50, 30))
-        self.image.fill(PLAYER_COLOR)
+        self.image = get_player_sprite()
         self.rect = self.image.get_rect(midbottom=(WIDTH // 2, HEIGHT - 40))
         self.reload_delay = 300  # ms between shots
         self.last_shot = 0
@@ -27,8 +144,7 @@ class Player(pygame.sprite.Sprite):
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, pos):
         super().__init__()
-        self.image = pygame.Surface((4, 12))
-        self.image.fill(BULLET_COLOR)
+        self.image = get_player_laser_sprite()
         self.rect = self.image.get_rect(midbottom=pos)
 
     def update(self, dt):
@@ -39,16 +155,14 @@ class Bullet(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, pos):
         super().__init__()
-        self.image = pygame.Surface((40, 25))
-        self.image.fill(ENEMY_COLOR)
+        self.image = get_enemy_sprite()
         self.rect = self.image.get_rect(topleft=pos)
         
 # Enemy bullet fired by invaders
 class EnemyBullet(pygame.sprite.Sprite):
     def __init__(self, pos):
         super().__init__()
-        self.image = pygame.Surface((4, 12))
-        self.image.fill(BULLET_COLOR)
+        self.image = get_enemy_laser_sprite()
         self.rect = self.image.get_rect(midtop=pos)
 
     def update(self, dt):
