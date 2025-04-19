@@ -1,7 +1,7 @@
 import pygame
 import sys
 import random
-from config import WIDTH, HEIGHT, FPS, PLAYER_SPEED, BULLET_SPEED, ENEMY_SPEED_INIT, ENEMY_DROP, ENEMY_SPEED_FACTOR, ENEMY_FIRE_CHANCE, ROWS, COLS, ENEMY_MARGIN_X, ENEMY_MARGIN_Y, ENEMY_SPACING_X, ENEMY_SPACING_Y, BG_COLOR, TEXT_COLOR, MSG_COLOR
+from config import WIDTH, HEIGHT, FPS, PLAYER_SPEED, BULLET_SPEED, ENEMY_SPEED_INIT, ENEMY_DROP, ENEMY_SPEED_FACTOR, ENEMY_FIRE_CHANCE, ROWS, COLS, ENEMY_MARGIN_X, ENEMY_MARGIN_Y, ENEMY_SPACING_X, ENEMY_SPACING_Y, BG_COLOR, TEXT_COLOR, MSG_COLOR, LIVES
 from sprites import Player, Bullet, Enemy, EnemyBullet
 class Game:
     # game states
@@ -30,6 +30,15 @@ class Game:
         self.state = self.STATE_START
 
         self.create_enemies()
+        # initialize player lives
+        self.lives = LIVES
+        # blinking / invulnerability state after hit or final death flash
+        self.hit = False
+        self.hit_start = 0
+        self.hit_duration = 1000  # milliseconds
+        self.death_pos = None
+        # flag to indicate final-life flash before game over
+        self.final_death = False
 
     def create_enemies(self):
         for row in range(ROWS):
@@ -46,12 +55,38 @@ class Game:
         self.enemy_direction = 1
         self.score = 0
         self.game_over = False
+        # reset player lives
+        self.lives = LIVES
         # reset player sprite and position
         self.players.empty()
         self.player = Player()
         self.players.add(self.player)
+        # clear any final-death state
+        self.final_death = False
         # recreate enemies
         self.create_enemies()
+
+    def lose_life(self, now):
+        """Decrease life count; if lives remain, start invulnerability; otherwise flash then game over."""
+        self.lives -= 1
+        # still have lives: normal invulnerability blink
+        if self.lives > 0:
+            self.bullets.empty()
+            self.enemy_bullets.empty()
+            self.hit = True
+            self.hit_start = now
+            self.death_pos = self.player.rect.midbottom
+            self.player.last_shot = now
+        # final life lost: flash before game over
+        else:
+            self.bullets.empty()
+            self.enemy_bullets.empty()
+            self.hit = True
+            self.hit_start = now
+            self.death_pos = self.player.rect.midbottom
+            self.final_death = True
+            # ensure shoot timer reset (no shooting expected)
+            self.player.last_shot = now
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -65,7 +100,8 @@ class Game:
                     self.state = self.STATE_PLAYING
             # playing: handle shooting
             elif self.state == self.STATE_PLAYING:
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+                # during invulnerability blinking, do not accept shoot input
+                if not self.hit and event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                     now = pygame.time.get_ticks()
                     self.player.shoot(now, self.bullets)
             # game over: return to start screen
@@ -80,7 +116,21 @@ class Game:
             return
 
         now = pygame.time.get_ticks()
-        self.players.update(dt)
+        # finish blinking/invulnerability or final-death flash if duration elapsed
+        if self.hit and now - self.hit_start >= self.hit_duration:
+            # if this was the final death, transition to game over
+            if self.final_death:
+                self.hit = False
+                self.final_death = False
+                self.state = self.STATE_GAME_OVER
+            else:
+                # end invulnerability, respawn player
+                self.hit = False
+                self.player.rect.midbottom = self.death_pos
+                self.player.last_shot = now
+        # update player movement if not blinking
+        if not self.hit:
+            self.players.update(dt)
         self.bullets.update(dt)
         # update invader-fired bullets
         self.enemy_bullets.update(dt)
@@ -106,10 +156,15 @@ class Game:
             for e in enemies:
                 e.rect.x += move_x
             # random invader firing independent of bounce
-            if enemies and not self.enemy_bullets and random.random() < ENEMY_FIRE_CHANCE * dt:
-                bottom_y = max(e.rect.y for e in enemies)
-                bottom_enemies = [e for e in enemies if e.rect.y == bottom_y]
-                shooter = random.choice(bottom_enemies)
+            # allow any invader with no blocker below in its column to fire
+            if not self.enemy_bullets and random.random() < ENEMY_FIRE_CHANCE * dt:
+                cols = {}
+                for e in enemies:
+                    key = e.rect.x
+                    if key not in cols or e.rect.y > cols[key].rect.y:
+                        cols[key] = e
+                shooters = list(cols.values())
+                shooter = random.choice(shooters)
                 self.enemy_bullets.add(EnemyBullet(shooter.rect.midbottom))
 
         hits = pygame.sprite.groupcollide(self.enemies, self.bullets, True, True)
@@ -120,8 +175,8 @@ class Game:
                 self.game_over = True
                 break
         # enemy bullets hitting player
-        if pygame.sprite.spritecollide(self.player, self.enemy_bullets, True):
-            self.game_over = True
+        if not self.hit and pygame.sprite.spritecollide(self.player, self.enemy_bullets, True):
+            self.lose_life(now)
 
         if not self.enemies:
             self.game_over = True
@@ -144,13 +199,21 @@ class Game:
             self.screen.blit(instr3, instr3.get_rect(center=(WIDTH//2, HEIGHT//2 + 40)))
         # game screen
         elif self.state == self.STATE_PLAYING:
-            self.players.draw(self.screen)
+            # draw player (blinking effect if hit)
+            if self.hit:
+                # flashing random colors during invulnerability
+                blink_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+                pygame.draw.rect(self.screen, blink_color, self.player.rect)
+            else:
+                self.players.draw(self.screen)
             self.bullets.draw(self.screen)
             # draw invader-fired bullets
             self.enemy_bullets.draw(self.screen)
             self.enemies.draw(self.screen)
             score_text = self.font.render(f"Score: {self.score}", True, TEXT_COLOR)
             self.screen.blit(score_text, (10, 10))
+            lives_text = self.font.render(f"Lives: {self.lives}", True, TEXT_COLOR)
+            self.screen.blit(lives_text, (WIDTH - lives_text.get_width() - 10, 10))
         # game over screen
         elif self.state == self.STATE_GAME_OVER:
             msg = "YOU WIN!" if not self.enemies else "GAME OVER"

@@ -7,7 +7,7 @@ BULLET_SPEED = 8 * FPS
 ENEMY_SPEED_INIT = 1.0 * FPS      # starts slow, accelerates
 ENEMY_DROP = 20             # pixels enemies descend when they hit an edge
 ENEMY_SPEED_FACTOR = 1.05    # multiplier applied to enemy speed each time they descend
-ENEMY_FIRE_CHANCE = 0.5     # probability invader fires when eligible
+ENEMY_FIRE_CHANCE = 2    # probability invader fires when eligible
 ROWS, COLS = 4, 8           # enemy formation
 
 # Enemy formation layout
@@ -23,3 +23,6 @@ MSG_COLOR = "yellow"
 PLAYER_COLOR = "white"
 BULLET_COLOR = "cyan"
 ENEMY_COLOR = "lime"
+
+# Player lives
+LIVES = 3
