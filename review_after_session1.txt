@@ -22,7 +22,7 @@
       • ✅ Done:If you plan more states (menus, high‐score screen, multiple levels), you might expand the
      state machine inside Game.
 
-    – 5. Enemy block movement
+    – 5. ✅ Done: Enemy block movement
       • You currently iterate each enemy, shift it and test for edges, then do a second loop to
     descend.
       • For small ROWS×COLS this is fine; if you grow the formation you could compute the group’s

@@ -1,7 +1,8 @@
 import pygame
 import sys
-from config import WIDTH, HEIGHT, FPS, PLAYER_SPEED, BULLET_SPEED, ENEMY_SPEED_INIT, ENEMY_DROP, ROWS, COLS, ENEMY_MARGIN_X, ENEMY_MARGIN_Y, ENEMY_SPACING_X, ENEMY_SPACING_Y, BG_COLOR, TEXT_COLOR, MSG_COLOR
-from sprites import Player, Bullet, Enemy
+import random
+from config import WIDTH, HEIGHT, FPS, PLAYER_SPEED, BULLET_SPEED, ENEMY_SPEED_INIT, ENEMY_DROP, ENEMY_SPEED_FACTOR, ENEMY_FIRE_CHANCE, ROWS, COLS, ENEMY_MARGIN_X, ENEMY_MARGIN_Y, ENEMY_SPACING_X, ENEMY_SPACING_Y, BG_COLOR, TEXT_COLOR, MSG_COLOR
+from sprites import Player, Bullet, Enemy, EnemyBullet
 class Game:
     # game states
     STATE_START = "START"
@@ -18,6 +19,8 @@ class Game:
         self.players = pygame.sprite.GroupSingle(self.player)
         self.bullets = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
+        # group for enemy-fired bullets
+        self.enemy_bullets = pygame.sprite.Group()
 
         self.enemy_direction = 1
         self.enemy_speed = ENEMY_SPEED_INIT
@@ -37,6 +40,7 @@ class Game:
 
     def reset(self):
         self.bullets.empty()
+        self.enemy_bullets.empty()
         self.enemies.empty()
         self.enemy_speed = ENEMY_SPEED_INIT
         self.enemy_direction = 1
@@ -78,18 +82,35 @@ class Game:
         now = pygame.time.get_ticks()
         self.players.update(dt)
         self.bullets.update(dt)
+        # update invader-fired bullets
+        self.enemy_bullets.update(dt)
 
+        # Enemy block movement: compute group bounds once, then branch on edges
         move_x = self.enemy_speed * self.enemy_direction * dt
-        descend = False
-        for enemy in self.enemies:
-            enemy.rect.x += move_x
-            if enemy.rect.right >= WIDTH - 10 or enemy.rect.left <= 10:
-                descend = True
-        if descend:
-            self.enemy_direction *= -1
-            for enemy in self.enemies:
-                enemy.rect.y += ENEMY_DROP
-            self.enemy_speed *= 1.05
+        enemies = self.enemies.sprites()
+        if enemies:
+            # compute bounding rect of the enemy group
+            group_rect = enemies[0].rect.copy()
+            for e in enemies[1:]:
+                group_rect.union_ip(e.rect)
+            # check if next horizontal move would hit screen edges (10px margin)
+            if group_rect.right + move_x >= WIDTH - 10 or group_rect.left + move_x <= 10:
+                # descend and reverse direction, then accelerate
+                for e in enemies:
+                    e.rect.y += ENEMY_DROP
+                self.enemy_direction *= -1
+                self.enemy_speed *= ENEMY_SPEED_FACTOR
+                # recalc horizontal movement after reversing
+                move_x = self.enemy_speed * self.enemy_direction * dt
+            # apply horizontal movement
+            for e in enemies:
+                e.rect.x += move_x
+            # random invader firing independent of bounce
+            if enemies and not self.enemy_bullets and random.random() < ENEMY_FIRE_CHANCE * dt:
+                bottom_y = max(e.rect.y for e in enemies)
+                bottom_enemies = [e for e in enemies if e.rect.y == bottom_y]
+                shooter = random.choice(bottom_enemies)
+                self.enemy_bullets.add(EnemyBullet(shooter.rect.midbottom))
 
         hits = pygame.sprite.groupcollide(self.enemies, self.bullets, True, True)
         self.score += len(hits) * 10
@@ -98,6 +119,9 @@ class Game:
             if enemy.rect.bottom >= self.player.rect.top:
                 self.game_over = True
                 break
+        # enemy bullets hitting player
+        if pygame.sprite.spritecollide(self.player, self.enemy_bullets, True):
+            self.game_over = True
 
         if not self.enemies:
             self.game_over = True
@@ -122,6 +146,8 @@ class Game:
         elif self.state == self.STATE_PLAYING:
             self.players.draw(self.screen)
             self.bullets.draw(self.screen)
+            # draw invader-fired bullets
+            self.enemy_bullets.draw(self.screen)
             self.enemies.draw(self.screen)
             score_text = self.font.render(f"Score: {self.score}", True, TEXT_COLOR)
             self.screen.blit(score_text, (10, 10))

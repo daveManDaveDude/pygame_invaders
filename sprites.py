@@ -42,3 +42,16 @@ class Enemy(pygame.sprite.Sprite):
         self.image = pygame.Surface((40, 25))
         self.image.fill(ENEMY_COLOR)
         self.rect = self.image.get_rect(topleft=pos)
+        
+# Enemy bullet fired by invaders
+class EnemyBullet(pygame.sprite.Sprite):
+    def __init__(self, pos):
+        super().__init__()
+        self.image = pygame.Surface((4, 12))
+        self.image.fill(BULLET_COLOR)
+        self.rect = self.image.get_rect(midtop=pos)
+
+    def update(self, dt):
+        self.rect.y += BULLET_SPEED * dt
+        if self.rect.top > HEIGHT:
+            self.kill()

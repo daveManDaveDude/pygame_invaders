@@ -6,6 +6,8 @@ PLAYER_SPEED = 5 * FPS
 BULLET_SPEED = 8 * FPS
 ENEMY_SPEED_INIT = 1.0 * FPS      # starts slow, accelerates
 ENEMY_DROP = 20             # pixels enemies descend when they hit an edge
+ENEMY_SPEED_FACTOR = 1.05    # multiplier applied to enemy speed each time they descend
+ENEMY_FIRE_CHANCE = 0.5     # probability invader fires when eligible
 ROWS, COLS = 4, 8           # enemy formation
 
 # Enemy formation layout
