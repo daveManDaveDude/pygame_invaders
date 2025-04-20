@@ -1,4 +1,5 @@
 import pygame
+import random
 from config import LIVES, ENEMY_SPEED_INIT
 from sprites import Player, Enemy
 from engine.engine import Engine, GameState
@@ -38,6 +39,12 @@ class PlayScene:
         self.hit_duration = 1000
         self.death_pos = None
         self._create_enemies()
+        # attacker dive state
+        self.attacker = None
+        now = pygame.time.get_ticks()
+        # schedule the first attack (5–10 seconds)
+        self.next_attack_at = now + random.randint(5000, 10000)
+        self.attacker_original_pos = None
 
     def _create_enemies(self):
         from config import ROWS, COLS, ENEMY_MARGIN_X, ENEMY_MARGIN_Y, ENEMY_SPACING_X, ENEMY_SPACING_Y
@@ -46,6 +53,41 @@ class PlayScene:
                 x = ENEMY_MARGIN_X + col * ENEMY_SPACING_X
                 y = ENEMY_MARGIN_Y + row * ENEMY_SPACING_Y
                 self.enemies.add(Enemy((x, y)))
+    
+    def spawn_attacker(self):
+        """Detach a random invader from the pack to begin a dive attack."""
+        # only one attacker at a time
+        if self.attacker is not None or not self.enemies:
+            return
+        # pick a random enemy from the bottommost row to attack
+        # determine bottom row y-coordinate among remaining enemies
+        ys = [e.rect.y for e in self.enemies.sprites()]
+        if not ys:
+            return
+        bottom_y = max(ys)
+        bottom_aliens = [e for e in self.enemies.sprites() if e.rect.y == bottom_y]
+        attacker = random.choice(bottom_aliens)
+        # record its original position for later respawn
+        self.attacker_original_pos = attacker.rect.topleft
+        # remove from pack and set as current attacker
+        self.enemies.remove(attacker)
+        self.attacker = attacker
+        # initialize dive timer on attacker
+        attacker.dive_t = 0.0
+        attacker.start_x, attacker.start_y = attacker.rect.topleft
+
+    def on_attacker_finished(self, missed):
+        """Handle end of a dive attack: respawn if missed, schedule next attack."""
+        now = pygame.time.get_ticks()
+        # if missed, put attacker back into pack at original pos
+        if missed and self.attacker:
+            self.attacker.rect.topleft = self.attacker_original_pos
+            self.enemies.add(self.attacker)
+        # clear attacker state
+        self.attacker = None
+        self.attacker_original_pos = None
+        # schedule next attack in 5-10 seconds
+        self.next_attack_at = now + random.randint(5000, 10000)
 
     def handle_events(self, events):
         for event in events:
@@ -83,6 +125,9 @@ class PlayScene:
         # if paused, skip movement and collisions
         if self.paused:
             return
+        # spawn attacker when timer elapses
+        if self.attacker is None and now >= self.next_attack_at:
+            self.spawn_attacker()
         # movement and firing
         update_entities(self, dt)
         # collisions and score

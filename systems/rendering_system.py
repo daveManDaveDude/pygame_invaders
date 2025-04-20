@@ -30,6 +30,9 @@ def render_play(scene, screen):
     scene.bullets.draw(screen)
     scene.enemy_bullets.draw(screen)
     scene.enemies.draw(screen)
+    # draw the diving attacker separately (detached from pack)
+    if getattr(scene, 'attacker', None) is not None:
+        screen.blit(scene.attacker.image, scene.attacker.rect)
     # HUD
     score_text = scene.font.render(f"Score: {scene.score}", True, TEXT_COLOR)
     screen.blit(score_text, (10, 10))
