@@ -10,10 +10,10 @@ ALPHA_THRESHOLD = 64
 _SPRITE_SHEET_PATH = os.path.join(os.path.dirname(__file__), 'spritesheet.png')
 _SPRITE_SHEET = None
 _SPRITE_CACHE = {}
-_SHEET_COLS = 4
-_SHEET_ROWS = 4
-_CELL_WIDTH = None
-_CELL_HEIGHT = None
+_SHEET_COLS = 4  # legacy: number of grid columns (used for thresholding)
+_SHEET_ROWS = 4  # legacy: number of grid rows (used for thresholding)
+_CELL_WIDTH = None  # unused in dynamic extraction
+_CELL_HEIGHT = None  # unused in dynamic extraction
 
 def _load_sheet():
     """Load and convert the sprite sheet once the display is initialized."""
@@ -42,11 +42,21 @@ def _get_sprite(col, row):
         image = temp
     _SPRITE_CACHE[key] = image
     return image
+# Basic grid-based sprite grouping (4x4 cells)
+def _extract_sprite_groups():
+    """Return the sprite sheet cells as a list of rows of images."""
+    sheet = _load_sheet()
+    groups = []
+    for row in range(_SHEET_ROWS):
+        imgs = []
+        for col in range(_SHEET_COLS):
+            imgs.append(_get_sprite(col, row))
+        groups.append(imgs)
+    return groups
 
 def get_enemy_sprite():
     """Crisp scaling for enemy: randomly pick one of the 8 sprites in the first two rows."""
     # choose a random column (0.._SHEET_COLS-1) and row (0 or 1)
-    # pick a random sprite cell in first two rows
     col = random.randrange(_SHEET_COLS)
     row = random.randrange(2)
     orig = _get_sprite(col, row)
@@ -62,7 +72,7 @@ def get_enemy_laser_sprite():
     """Extract a single enemy laser sprite, crop out one beam, then scale and brighten."""
     # ensure sheet loaded
     sheet = _load_sheet()
-    # full cell
+    # full cell at column 2 of last row
     cw, ch = _CELL_WIDTH, _CELL_HEIGHT
     cell_rect = pygame.Rect(2 * cw, 3 * ch, cw, ch)
     cell = sheet.subsurface(cell_rect).copy()
