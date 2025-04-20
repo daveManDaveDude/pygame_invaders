@@ -23,6 +23,7 @@ class GameOverScene:
 
     def handle_events(self, events):
         for event in events:
+            # return to menu on ENTER
             if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
                 self.engine.change_state(GameState.START)
 

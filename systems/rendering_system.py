@@ -14,6 +14,9 @@ def render_start(scene, screen):
     screen.blit(instr1, instr1.get_rect(center=(w//2, h//2 - 20)))
     screen.blit(instr2, instr2.get_rect(center=(w//2, h//2 + 10)))
     screen.blit(instr3, instr3.get_rect(center=(w//2, h//2 + 40)))
+    # quit instruction
+    instr4 = scene.font.render("Press Q to Quit", True, TEXT_COLOR)
+    screen.blit(instr4, instr4.get_rect(center=(w//2, h//2 + 70)))
 
 def render_play(scene, screen):
     """Draw the playing screen: entities and HUD."""
@@ -33,6 +36,12 @@ def render_play(scene, screen):
     w = screen.get_width()
     lives_text = scene.font.render(f"Lives: {scene.lives}", True, TEXT_COLOR)
     screen.blit(lives_text, (w - lives_text.get_width() - 10, 10))
+    # pause indicator
+    if getattr(scene, 'paused', False):
+        # render pause text without dimming background
+        w, h = screen.get_size()
+        pause_surf = scene.font.render("PAUSED", True, TEXT_COLOR)
+        screen.blit(pause_surf, pause_surf.get_rect(center=(w//2, h//2)))
 
 def render_game_over(scene, screen):
     """Draw the game over screen."""

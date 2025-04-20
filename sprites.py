@@ -1,5 +1,6 @@
 import pygame
 import os
+import random
 from config import WIDTH, HEIGHT, PLAYER_SPEED, BULLET_SPEED
 
 # threshold for alpha when detecting sprite regions (for cropping lasers)
@@ -43,8 +44,15 @@ def _get_sprite(col, row):
     return image
 
 def get_enemy_sprite():
-    # crisp scaling for enemy
-    return pygame.transform.smoothscale(_get_sprite(0, 0), (40, 25))
+    """Crisp scaling for enemy: randomly pick one of the 8 sprites in the first two rows."""
+    # choose a random column (0.._SHEET_COLS-1) and row (0 or 1)
+    # pick a random sprite cell in first two rows
+    col = random.randrange(_SHEET_COLS)
+    row = random.randrange(2)
+    orig = _get_sprite(col, row)
+    # scale to uniform size (square) to avoid vertical squashing
+    size = 40
+    return pygame.transform.smoothscale(orig, (size, size))
 
 def get_player_sprite():
     # crisp scaling for player

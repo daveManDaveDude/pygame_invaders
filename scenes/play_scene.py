@@ -30,6 +30,8 @@ class PlayScene:
         self.score = 0
         self.game_over = False
         self.lives = LIVES
+        # paused state
+        self.paused = False
         self.hit = False
         self.final_death = False
         self.hit_start = 0
@@ -47,9 +49,20 @@ class PlayScene:
 
     def handle_events(self, events):
         for event in events:
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE and not self.hit:
-                now = pygame.time.get_ticks()
-                self.player.shoot(now, self.bullets)
+            # shoot when not paused or hit
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE and not self.hit and not self.paused:
+                    now = pygame.time.get_ticks()
+                    self.player.shoot(now, self.bullets)
+                # toggle pause
+                elif event.key == pygame.K_p:
+                    # only allow pause during active play
+                    if not self.hit and not self.game_over:
+                        self.paused = not self.paused
+                # quit to intro
+                elif event.key == pygame.K_q:
+                    # immediately go to start scene
+                    self.engine.change_state(GameState.START)
 
     def update(self, dt):
         now = pygame.time.get_ticks()
@@ -66,6 +79,9 @@ class PlayScene:
         # if game over, switch state
         if self.game_over:
             self.engine.change_state(GameState.GAME_OVER)
+            return
+        # if paused, skip movement and collisions
+        if self.paused:
             return
         # movement and firing
         update_entities(self, dt)
