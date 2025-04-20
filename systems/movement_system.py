@@ -1,29 +1,36 @@
 import random
 import pygame
 import math
-from config import WIDTH, HEIGHT, ENEMY_DROP, ENEMY_SPEED_FACTOR, ENEMY_FIRE_CHANCE, DIVE_AMPLITUDE, DIVE_SPEED, DIVE_FREQUENCY
+from config import WIDTH, HEIGHT, ENEMY_DROP, ENEMY_SPEED_FACTOR, ENEMY_FIRE_CHANCE, DIVE_AMPLITUDE, DIVE_SPEED
 from sprites import EnemyBullet
 
 def _update_attacker(scene, dt):
-    """Update the dive attacker's sweeping dive motion."""
+    """Update the dive attacker's aiming dive with a single sine oscillation."""
     attacker = scene.attacker
     # initialize dive parameters on first call
     if not hasattr(attacker, 'dive_t'):
         attacker.dive_t = 0.0
         attacker.start_x, attacker.start_y = attacker.rect.topleft
-    else:
-        attacker.dive_t += dt
-    # compute offsets: horizontal sine sweep, constant vertical speed
-    dx = DIVE_AMPLITUDE * math.sin(2 * math.pi * DIVE_FREQUENCY * attacker.dive_t)
-    dy = DIVE_SPEED * attacker.dive_t
-    # update position
-    # apply rounded offsets to avoid drift
-    attacker.rect.x = attacker.start_x + int(round(dx))
-    attacker.rect.y = attacker.start_y + int(round(dy))
-    # if reached bottom, signal dive complete
-    if attacker.rect.top >= HEIGHT:
-        # attacker missed; respawn into pack
+        # total dive duration based on vertical speed
+        attacker.dive_T = max(0.0001, (HEIGHT - attacker.start_y) / DIVE_SPEED)
+    # advance dive timer
+    attacker.dive_t += dt
+    # normalized progress [0..1]
+    tau = attacker.dive_t / attacker.dive_T
+    # finish dive when complete
+    if tau >= 1.0:
         scene.on_attacker_finished(missed=True)
+        return
+    # horizontal base aiming directly toward current player position
+    player_x = scene.player.rect.centerx
+    base_x = attacker.start_x + (player_x - attacker.start_x) * tau
+    # single sine oscillation about the base path
+    x_offset = DIVE_AMPLITUDE * math.sin(2 * math.pi * tau)
+    new_x = int(round(base_x + x_offset))
+    # vertical interpolation down to bottom
+    new_y = int(round(attacker.start_y + (HEIGHT - attacker.start_y) * tau))
+    # update position
+    attacker.rect.topleft = (new_x, new_y)
 
 def update_entities(scene, dt):
     """

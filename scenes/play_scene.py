@@ -1,6 +1,6 @@
 import pygame
 import random
-from config import LIVES, ENEMY_SPEED_INIT
+from config import LIVES, ENEMY_SPEED_INIT, HEIGHT, DIVE_SPEED
 from sprites import Player, Enemy
 from engine.engine import Engine, GameState
 from systems.movement_system import update_entities
@@ -72,9 +72,11 @@ class PlayScene:
         # remove from pack and set as current attacker
         self.enemies.remove(attacker)
         self.attacker = attacker
-        # initialize dive timer on attacker
+        # initialize dive parameters on attacker
         attacker.dive_t = 0.0
         attacker.start_x, attacker.start_y = attacker.rect.topleft
+        # compute total dive duration based on vertical speed
+        attacker.dive_T = max(0.0001, (HEIGHT - attacker.start_y) / DIVE_SPEED)
 
     def on_attacker_finished(self, missed):
         """Handle end of a dive attack: respawn if missed, schedule next attack."""
