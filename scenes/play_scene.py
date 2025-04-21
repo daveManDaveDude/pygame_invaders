@@ -186,11 +186,33 @@ class PlayScene:
             self.spawn_attacker()
         # movement and firing
         update_entities(self, dt)
-        # collisions and score
+        # collisions (including bullets vs enemies)
         handle_collisions(self)
-        # after collisions, check game over or win
-        if self.game_over:
-            self.engine.change_state(GameState.GAME_OVER)
+        # check if pack reached player's level: lose a life and start new wave
+        pack_bottom = max((e.rect.bottom for e in self.enemies), default=0)
+        if pack_bottom >= self.player.rect.top:
+            now = pygame.time.get_ticks()
+            # lose a life only if not in invulnerable (cheat) mode
+            if not getattr(self, 'invulnerable', False):
+                self.lose_life(now)
+            # reset wave without ending game
+            self.bullets.empty()
+            self.enemy_bullets.empty()
+            self.attacker = None
+            self.enemies.empty()
+            self._create_enemies()
+            self.next_attack_at = now + random.randint(5000, 10000)
+            return
+        # check win condition: all enemies cleared
+        if not self.enemies:
+            # start next level
+            now = pygame.time.get_ticks()
+            self.bullets.empty()
+            self.enemy_bullets.empty()
+            self.attacker = None
+            self._create_enemies()
+            self.next_attack_at = now + random.randint(5000, 10000)
+            return
 
     def lose_life(self, now):
         """Handle player being hit: lives decrement and invulnerability or final death."""

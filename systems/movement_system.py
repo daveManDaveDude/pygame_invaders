@@ -1,7 +1,7 @@
 import random
 import pygame
 import math
-from config import WIDTH, HEIGHT, ENEMY_DROP, ENEMY_SPEED_FACTOR, ENEMY_FIRE_CHANCE, DIVE_AMPLITUDE, DIVE_MIN_AMPLITUDE, DIVE_SPEED
+from config import WIDTH, HEIGHT, ENEMY_DROP, ENEMY_SPEED_FACTOR, ENEMY_FIRE_CHANCE, DIVE_AMPLITUDE, DIVE_MIN_AMPLITUDE, DIVE_SPEED, DIVE_FIRE_INTERVAL
 from sprites import EnemyBullet
 
 def _update_attacker(scene, dt):
@@ -44,6 +44,13 @@ def _update_attacker(scene, dt):
     new_y = int(round(attacker.start_y + (HEIGHT - attacker.start_y) * (tau ** 2)))
     # update position
     attacker.rect.topleft = (new_x, new_y)
+    # diving attacker firing: shoot every DIVE_FIRE_INTERVAL seconds
+    if not hasattr(attacker, 'fire_timer'):
+        attacker.fire_timer = 0.0
+    attacker.fire_timer += dt
+    if attacker.fire_timer >= DIVE_FIRE_INTERVAL:
+        attacker.fire_timer -= DIVE_FIRE_INTERVAL
+        scene.enemy_bullets.add(EnemyBullet(attacker.rect.midbottom))
 
 def update_entities(scene, dt):
     """
