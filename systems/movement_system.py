@@ -30,6 +30,10 @@ def _update_attacker(scene, dt):
                 tau_hit = 1.0
             attacker.tau_hit = max(0.0, min(1.0, tau_hit))
             attacker.overshoot_end = min(0.5, attacker.tau_hit * 0.5)
+            # capture static overshoot x based on player's position at dive start
+            player_x0 = scene.player.rect.centerx
+            chase_dir = math.copysign(1.0, player_x0 - start_x)
+            attacker.overshoot_x = player_x0 + chase_dir * DIVE_AMPLITUDE
         return
     # initialize dive parameters on first call
     if not hasattr(attacker, 'dive_t'):
@@ -45,16 +49,14 @@ def _update_attacker(scene, dt):
     if tau >= 1.0:
         scene.on_attacker_finished(missed=True)
         return
-    # horizontal movement: dynamic overshoot and chasing moving player
+    # horizontal movement: fixed overshoot then dynamic tracking
     player_x = scene.player.rect.centerx
     start_x = attacker.start_x
-    # compute overshoot beyond current player position
-    chase_dir = math.copysign(1.0, player_x - start_x)
-    overshoot_x = player_x + chase_dir * DIVE_AMPLITUDE
+    overshoot_x = attacker.overshoot_x
     tau_hit = attacker.tau_hit
     overshoot_end = attacker.overshoot_end
     if tau < overshoot_end and overshoot_end > 0:
-        # phase 1: fly toward dynamic overshoot point
+        # phase 1: fly toward static overshoot point
         sub_tau = tau / overshoot_end
         base_x = start_x + (overshoot_x - start_x) * sub_tau
     elif tau < tau_hit and tau_hit > overshoot_end:
