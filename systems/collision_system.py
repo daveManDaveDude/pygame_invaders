@@ -8,6 +8,15 @@ def handle_collisions(scene):
     hit, score, game_over, lose_life.
     """
     # diving attacker collision detection disabled for now
+    # allow player to shoot the diving attacker
+    if getattr(scene, 'attacker', None):
+        # bullets that hit the attacker are removed
+        hits = pygame.sprite.spritecollide(scene.attacker, scene.bullets, True)
+        if hits:
+            # award points for attacker kill
+            scene.score += len(hits) * 10
+            # finish attack (no respawn)
+            scene.on_attacker_finished(missed=False)
     # player bullets vs enemies
     hits = pygame.sprite.groupcollide(scene.enemies, scene.bullets, True, True)
     scene.score += len(hits) * 10
