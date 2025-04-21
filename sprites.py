@@ -187,3 +187,58 @@ class EnemyBullet(pygame.sprite.Sprite):
         self.rect.y += BULLET_SPEED * dt
         if self.rect.top > HEIGHT:
             self.kill()
+    
+# Explosion animation for destroyed invaders
+_EXPLOSION_SHEET_PATH = os.path.join(os.path.dirname(__file__), 'explosion_sheet.png')
+_EXPLOSION_FRAMES = None
+
+def _load_explosion_frames():
+    """Load and slice the explosion sprite sheet into frames."""
+    global _EXPLOSION_FRAMES
+    if _EXPLOSION_FRAMES is None:
+        sheet = pygame.image.load(_EXPLOSION_SHEET_PATH).convert_alpha()
+        cols, rows = 4, 4
+        fw = sheet.get_width() // cols
+        fh = sheet.get_height() // rows
+        # downscale explosion frames by factor of 4
+        dw, dh = fw // 4, fh // 4
+        frames = []
+        for row in range(rows):
+            for col in range(cols):
+                rect = pygame.Rect(col * fw, row * fh, fw, fh)
+                frame = sheet.subsurface(rect).copy()
+                frame = pygame.transform.smoothscale(frame, (dw, dh))
+                frames.append(frame)
+        _EXPLOSION_FRAMES = frames
+    return _EXPLOSION_FRAMES
+
+class Explosion(pygame.sprite.Sprite):
+    """Animated explosion sprite."""
+    def __init__(self, pos, frame_duration=0.025, velocity=(0, 0)):
+        super().__init__()
+        self.frames = _load_explosion_frames()
+        self.frame_duration = frame_duration
+        self.elapsed = 0.0
+        self.current_frame = 0
+        self.image = self.frames[self.current_frame]
+        self.rect = self.image.get_rect(center=pos)
+        # movement velocity (pixels per second)
+        self.vx, self.vy = velocity
+
+    def update(self, dt):
+        # move explosion with its velocity
+        if hasattr(self, 'vx') and hasattr(self, 'vy'):
+            self.rect.x += self.vx * dt
+            self.rect.y += self.vy * dt
+        # advance animation frame
+        self.elapsed += dt
+        if self.elapsed >= self.frame_duration:
+            self.elapsed -= self.frame_duration
+            self.current_frame += 1
+            if self.current_frame >= len(self.frames):
+                self.kill()
+                return
+            # update image and preserve center
+            center = self.rect.center
+            self.image = self.frames[self.current_frame]
+            self.rect = self.image.get_rect(center=center)

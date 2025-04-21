@@ -1,4 +1,5 @@
 import pygame
+from sprites import Explosion
 
 def handle_collisions(scene):
     """
@@ -21,16 +22,26 @@ def handle_collisions(scene):
                 # invulnerable: treat as missed dive
                 scene.on_attacker_finished(missed=True)
     # allow player to shoot the diving attacker
-    if getattr(scene, 'attacker', None):
+    attacker = getattr(scene, 'attacker', None)
+    if attacker:
         # bullets that hit the attacker are removed
-        hits = pygame.sprite.spritecollide(scene.attacker, scene.bullets, True)
+        hits = pygame.sprite.spritecollide(attacker, scene.bullets, True)
         if hits:
+            # spawn explosion at attacker position with pack velocity
+            vx = getattr(scene, 'enemy_speed', 0) * getattr(scene, 'enemy_direction', 0)
+            explosion = Explosion(attacker.rect.center, velocity=(vx, 0))
+            scene.explosions.add(explosion)
             # award points for attacker kill
             scene.score += len(hits) * 10
             # finish attack (no respawn)
             scene.on_attacker_finished(missed=False)
     # player bullets vs enemies
     hits = pygame.sprite.groupcollide(scene.enemies, scene.bullets, True, True)
+    # spawn explosion for each enemy hit with pack velocity
+    vx = getattr(scene, 'enemy_speed', 0) * getattr(scene, 'enemy_direction', 0)
+    for enemy in hits:
+        explosion = Explosion(enemy.rect.center, velocity=(vx, 0))
+        scene.explosions.add(explosion)
     scene.score += len(hits) * 10
     # enemy bullets vs player
     if not scene.hit:

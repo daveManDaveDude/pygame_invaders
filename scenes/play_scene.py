@@ -26,6 +26,8 @@ class PlayScene:
         self.bullets = pygame.sprite.Group()
         self.enemies = pygame.sprite.Group()
         self.enemy_bullets = pygame.sprite.Group()
+        # explosion animations group
+        self.explosions = pygame.sprite.Group()
         self.enemy_direction = 1
         self.enemy_speed = ENEMY_SPEED_INIT
         self.score = 0
@@ -163,6 +165,8 @@ class PlayScene:
                     self.engine.change_state(GameState.START)
 
     def update(self, dt):
+        # update explosion animations
+        self.explosions.update(dt)
         now = pygame.time.get_ticks()
         # handle invulnerability timing
         if self.hit and now - self.hit_start >= self.hit_duration:
@@ -224,6 +228,12 @@ class PlayScene:
         self.hit_start = now
         self.death_pos = self.player.rect.midbottom
         self.player.last_shot = now
+        # spawn explosion animation at player position
+        from sprites import Explosion
+        explosion = Explosion(self.player.rect.center)
+        # tune frame duration so explosion spans the hit_duration
+        explosion.frame_duration = self.hit_duration / 1000.0 / len(explosion.frames)
+        self.explosions.add(explosion)
         # determine if final death
         if self.lives <= 0:
             self.final_death = True

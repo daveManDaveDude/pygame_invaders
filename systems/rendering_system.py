@@ -1,4 +1,3 @@
-import random
 import pygame
 from config import BG_COLOR, TEXT_COLOR, MSG_COLOR
 
@@ -21,11 +20,8 @@ def render_start(scene, screen):
 def render_play(scene, screen):
     """Draw the playing screen: entities and HUD."""
     screen.fill(BG_COLOR)
-    if scene.hit:
-        # blinking effect
-        blink_color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-        pygame.draw.rect(screen, blink_color, scene.player.rect)
-    else:
+    # draw player sprite if not hit; explosion animation handles hit state
+    if not scene.hit:
         scene.players.draw(screen)
     scene.bullets.draw(screen)
     scene.enemy_bullets.draw(screen)
@@ -33,6 +29,9 @@ def render_play(scene, screen):
     # draw the diving attacker separately (detached from pack)
     if getattr(scene, 'attacker', None) is not None:
         screen.blit(scene.attacker.image, scene.attacker.rect)
+    # draw explosions
+    if hasattr(scene, 'explosions'):
+        scene.explosions.draw(screen)
     # HUD
     score_text = scene.font.render(f"Score: {scene.score}", True, TEXT_COLOR)
     screen.blit(score_text, (10, 10))
