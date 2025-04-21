@@ -1,5 +1,7 @@
 # Pygame Invaders
 
+The entire project apart from this line and a couple of edits below are AI generated using codex cli.
+
 *A modern, fully‑configurable Space Invaders clone written in ****Python 3**** and ****Pygame***.
 
 ---
@@ -10,9 +12,9 @@
 - Each level gets faster; invaders occasionally peel off the pack and **dive‑bomb** your ship.
 - You have **3 lives** by default—lose them all and it’s game over.
 
-## ✨ Why This Project Is Interesting
+## ✨ Why This Project Is Interesting   <<< Its not LOL
 
-This repo is more than a tutorial clone; it showcases a **scene‑based architecture**, a lightweight **game engine**, and a completely data‑driven configuration, making it a great starting point for small 2‑D arcade projects.
+This repo is a test, I asked o3 to give me a basic space invaders in python using pygame. I then worked with Openai's codex client to create the demo game.
 
 ## 🔑 Features
 
