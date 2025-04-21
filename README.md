@@ -88,6 +88,6 @@ Released under the **MIT License** – see [`LICENSE`](LICENSE) for details.
 
 ## 🙏 Credits
 
-Sprites originally adapted from public‑domain Space Invaders assets; explosion sheet created with Aseprite.\
-Project authored by **@daveManDaveDude** with ❤️ and Pygame.
+Sprites created by openai o3; explosion sheet created by o3.\
+Project authored by codex cli and guided by **@daveManDaveDude**.
 
