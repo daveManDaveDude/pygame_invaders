@@ -1,6 +1,6 @@
 import pygame
 import random
-from config import LIVES, ENEMY_SPEED_INIT, HEIGHT, DIVE_SPEED
+from config import LIVES, ENEMY_SPEED_INIT, HEIGHT, DIVE_SPEED, DIVE_MIN_X_SEP, DIVE_MAX_X_SEP, ENEMY_DROP
 from sprites import Player, Enemy
 from engine.engine import Engine, GameState
 from systems.movement_system import update_entities
@@ -64,6 +64,11 @@ class PlayScene:
         # only one attacker at a time
         if self.attacker is not None or not self.enemies:
             return
+        # prevent diving when pack is too close to player vertically
+        player_y = self.player.rect.top
+        pack_bottom = max(e.rect.bottom for e in self.enemies)
+        if player_y - pack_bottom <= ENEMY_DROP * 3:
+            return
         # pick a random enemy that has no invaders below it in its column to attack
         # group enemies by grid column and select the bottom-most in each column
         if not self.enemies:
@@ -74,7 +79,20 @@ class PlayScene:
             # choose the enemy with the largest grid row (farthest down) per column
             if c not in bottom_by_col or r > bottom_by_col[c].grid_pos[0]:
                 bottom_by_col[c] = e
-        attacker = random.choice(list(bottom_by_col.values()))
+        # apply horizontal‑range filtering based on vertical separation
+        player_x = self.player.rect.centerx
+        player_y = self.player.rect.top
+        candidates = list(bottom_by_col.values())
+        filtered = []
+        for e in candidates:
+            y_sep = player_y - e.rect.y
+            f = max(0.0, min(1.0, y_sep / HEIGHT))
+            max_dx = DIVE_MIN_X_SEP + f * (DIVE_MAX_X_SEP - DIVE_MIN_X_SEP)
+            if abs(e.rect.centerx - player_x) <= max_dx:
+                filtered.append(e)
+        if filtered:
+            candidates = filtered
+        attacker = random.choice(candidates)
         # determine vertical clearance target (pack bottom including this attacker)
         pack_bottom = max(e.rect.bottom for e in self.enemies)
         attacker.clearance_target = pack_bottom

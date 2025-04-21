@@ -1,7 +1,7 @@
 import random
 import pygame
 import math
-from config import WIDTH, HEIGHT, ENEMY_DROP, ENEMY_SPEED_FACTOR, ENEMY_FIRE_CHANCE, DIVE_AMPLITUDE, DIVE_SPEED
+from config import WIDTH, HEIGHT, ENEMY_DROP, ENEMY_SPEED_FACTOR, ENEMY_FIRE_CHANCE, DIVE_AMPLITUDE, DIVE_MIN_AMPLITUDE, DIVE_SPEED
 from sprites import EnemyBullet
 
 def _update_attacker(scene, dt):
@@ -32,8 +32,9 @@ def _update_attacker(scene, dt):
             attacker.overshoot_end = min(0.5, attacker.tau_hit * 0.5)
             # capture static overshoot x based on player's position at dive start
             player_x0 = scene.player.rect.centerx
+            amp = DIVE_MIN_AMPLITUDE + attacker.tau_hit * (DIVE_AMPLITUDE - DIVE_MIN_AMPLITUDE)
             chase_dir = math.copysign(1.0, player_x0 - start_x)
-            attacker.overshoot_x = player_x0 + chase_dir * DIVE_AMPLITUDE
+            attacker.overshoot_x = player_x0 + chase_dir * amp
         return
     # initialize dive parameters on first call
     if not hasattr(attacker, 'dive_t'):
