@@ -7,7 +7,7 @@ from config import WIDTH, HEIGHT, PLAYER_SPEED, BULLET_SPEED
 ALPHA_THRESHOLD = 64
 
 # Sprite sheet constants (deferred loading until after display init)
-_SPRITE_SHEET_PATH = os.path.join(os.path.dirname(__file__), 'spritesheet.png')
+_SPRITE_SHEET_PATH = os.path.join(os.path.dirname(__file__), 'assets', 'spritesheet.png')
 _SPRITE_SHEET = None
 _SPRITE_CACHE = {}
 _SHEET_COLS = 4  # legacy: number of grid columns (used for thresholding)
@@ -189,7 +189,7 @@ class EnemyBullet(pygame.sprite.Sprite):
             self.kill()
     
 # Explosion animation for destroyed invaders
-_EXPLOSION_SHEET_PATH = os.path.join(os.path.dirname(__file__), 'explosion_sheet.png')
+_EXPLOSION_SHEET_PATH = os.path.join(os.path.dirname(__file__), 'assets', 'explosion_sheet.png')
 _EXPLOSION_FRAMES = None
 
 def _load_explosion_frames():
