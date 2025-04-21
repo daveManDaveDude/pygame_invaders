@@ -16,58 +16,30 @@ def _update_attacker(scene, dt):
         attacker.rect.y += DIVE_SPEED * dt
         # transition to dive when below pack
         if attacker.rect.top >= getattr(attacker, 'clearance_target', 0):
-            # initialize dive parameters and freeze target variables
+            # transition into the dive phase
             attacker.state = 'dive'
+            # reset dive timer and record start position
             attacker.dive_t = 0.0
-            start_x, start_y = attacker.rect.topleft
-            attacker.start_x, attacker.start_y = start_x, start_y
+            attacker.start_x, attacker.start_y = attacker.rect.topleft
+            # compute total dive duration based on vertical speed
             attacker.dive_T = max(0.0001, (HEIGHT - attacker.start_y) / DIVE_SPEED)
-            # capture static dive parameters: when the invader reaches player's y
-            player_y0 = scene.player.rect.top
-            if HEIGHT != start_y:
-                tau_hit = (player_y0 - start_y) / (HEIGHT - start_y)
-            else:
-                tau_hit = 1.0
-            attacker.tau_hit = max(0.0, min(1.0, tau_hit))
-            attacker.overshoot_end = min(0.5, attacker.tau_hit * 0.5)
-            # capture static overshoot x based on player's position at dive start
-            player_x0 = scene.player.rect.centerx
-            amp = DIVE_MIN_AMPLITUDE + attacker.tau_hit * (DIVE_AMPLITUDE - DIVE_MIN_AMPLITUDE)
-            chase_dir = math.copysign(1.0, player_x0 - start_x)
-            attacker.overshoot_x = player_x0 + chase_dir * amp
+            # randomize horizontal phase offset to vary left/right entry
+            attacker.phi = random.choice([0.0, math.pi])
         return
-    # initialize dive parameters on first call
-    if not hasattr(attacker, 'dive_t'):
-        attacker.dive_t = 0.0
-        attacker.start_x, attacker.start_y = attacker.rect.topleft
-        # total dive duration based on vertical speed
-        attacker.dive_T = max(0.0001, (HEIGHT - attacker.start_y) / DIVE_SPEED)
-    # advance dive timer
+    # --- dive phase (sine‐biased oscillation toward the player) ---
+    # advance dive timer and normalize
     attacker.dive_t += dt
-    # normalized progress [0..1]
     tau = attacker.dive_t / attacker.dive_T
-    # finish dive when complete
+    # finish dive if complete
     if tau >= 1.0:
         scene.on_attacker_finished(missed=True)
         return
-    # horizontal movement: fixed overshoot then dynamic tracking
+    # base path: linear interpolation toward player's current X
     player_x = scene.player.rect.centerx
-    start_x = attacker.start_x
-    overshoot_x = attacker.overshoot_x
-    tau_hit = attacker.tau_hit
-    overshoot_end = attacker.overshoot_end
-    if tau < overshoot_end and overshoot_end > 0:
-        # phase 1: fly toward static overshoot point
-        sub_tau = tau / overshoot_end
-        base_x = start_x + (overshoot_x - start_x) * sub_tau
-    elif tau < tau_hit and tau_hit > overshoot_end:
-        # phase 2: swoop back toward player's current position
-        sub_tau = (tau - overshoot_end) / (tau_hit - overshoot_end)
-        base_x = overshoot_x + (player_x - overshoot_x) * sub_tau
-    else:
-        # aligned or past alignment: hold at player's current x
-        base_x = player_x
-    new_x = int(round(base_x))
+    base_x = attacker.start_x + (player_x - attacker.start_x) * tau
+    # horizontal oscillation: sine wave with randomized phase
+    x_offset = DIVE_AMPLITUDE * math.sin(2 * math.pi * tau + attacker.phi)
+    new_x = int(round(base_x + x_offset))
     # vertical interpolation with ease-in (initially shallower)
     new_y = int(round(attacker.start_y + (HEIGHT - attacker.start_y) * (tau ** 2)))
     # update position

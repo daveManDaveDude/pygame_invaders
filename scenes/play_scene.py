@@ -83,6 +83,7 @@ class PlayScene:
         player_x = self.player.rect.centerx
         player_y = self.player.rect.top
         candidates = list(bottom_by_col.values())
+        # distance filter: allow only invaders within an adaptive X window
         filtered = []
         for e in candidates:
             y_sep = player_y - e.rect.y
@@ -92,6 +93,11 @@ class PlayScene:
                 filtered.append(e)
         if filtered:
             candidates = filtered
+        # randomize side of attack: prefer spawning left or right of player
+        side = random.choice([-1, 1])
+        side_candidates = [e for e in candidates if (e.rect.centerx - player_x) * side >= 0]
+        if side_candidates:
+            candidates = side_candidates
         attacker = random.choice(candidates)
         # determine vertical clearance target (pack bottom including this attacker)
         pack_bottom = max(e.rect.bottom for e in self.enemies)
