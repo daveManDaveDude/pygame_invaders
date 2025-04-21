@@ -7,6 +7,7 @@ def handle_collisions(scene):
     scene must have attributes: bullets, enemies, enemy_bullets, player,
     hit, score, game_over, lose_life.
     """
+    # diving attacker collision detection disabled for now
     # player bullets vs enemies
     hits = pygame.sprite.groupcollide(scene.enemies, scene.bullets, True, True)
     scene.score += len(hits) * 10

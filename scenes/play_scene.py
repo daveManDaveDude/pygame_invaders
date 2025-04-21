@@ -64,24 +64,24 @@ class PlayScene:
         # only one attacker at a time
         if self.attacker is not None or not self.enemies:
             return
-        # pick a random enemy from the bottommost row to attack
-        # determine bottom row y-coordinate among remaining enemies
-        ys = [e.rect.y for e in self.enemies.sprites()]
-        if not ys:
+        # pick a random enemy that has no invaders below it in its column to attack
+        # group enemies by grid column and select the bottom-most in each column
+        if not self.enemies:
             return
-        bottom_y = max(ys)
-        bottom_aliens = [e for e in self.enemies.sprites() if e.rect.y == bottom_y]
-        attacker = random.choice(bottom_aliens)
-        # record its grid cell for later respawn
-        # attacker.grid_pos already set in creation
+        bottom_by_col = {}
+        for e in self.enemies:
+            r, c = e.grid_pos
+            # choose the enemy with the largest grid row (farthest down) per column
+            if c not in bottom_by_col or r > bottom_by_col[c].grid_pos[0]:
+                bottom_by_col[c] = e
+        attacker = random.choice(list(bottom_by_col.values()))
+        # determine vertical clearance target (pack bottom including this attacker)
+        pack_bottom = max(e.rect.bottom for e in self.enemies)
+        attacker.clearance_target = pack_bottom
+        attacker.state = 'clearance'
         # remove from pack and set as current attacker
         self.enemies.remove(attacker)
         self.attacker = attacker
-        # initialize dive parameters on attacker
-        attacker.dive_t = 0.0
-        attacker.start_x, attacker.start_y = attacker.rect.topleft
-        # compute total dive duration based on vertical speed
-        attacker.dive_T = max(0.0001, (HEIGHT - attacker.start_y) / DIVE_SPEED)
 
     def on_attacker_finished(self, missed):
         """Handle end of a dive attack: respawn if missed, schedule next attack."""
