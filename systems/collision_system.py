@@ -16,8 +16,13 @@ def handle_collisions(scene):
             scene.game_over = True
             break
     # enemy bullets vs player
-    if not scene.hit and pygame.sprite.spritecollide(scene.player, scene.enemy_bullets, True):
-        scene.lose_life(pygame.time.get_ticks())
+    if not scene.hit:
+        # bullets that hit the player are removed
+        hits = pygame.sprite.spritecollide(scene.player, scene.enemy_bullets, True)
+        if hits:
+            # only lose life if not invulnerable
+            if not getattr(scene, 'invulnerable', False):
+                scene.lose_life(pygame.time.get_ticks())
     # win condition: all enemies destroyed
     if not scene.enemies:
         scene.game_over = True

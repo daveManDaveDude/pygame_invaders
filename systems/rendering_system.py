@@ -37,7 +37,11 @@ def render_play(scene, screen):
     score_text = scene.font.render(f"Score: {scene.score}", True, TEXT_COLOR)
     screen.blit(score_text, (10, 10))
     w = screen.get_width()
-    lives_text = scene.font.render(f"Lives: {scene.lives}", True, TEXT_COLOR)
+    # render lives, with a * if invulnerability cheat is active
+    lives_str = f"Lives: {scene.lives}"
+    if getattr(scene, 'invulnerable', False):
+        lives_str += "*"
+    lives_text = scene.font.render(lives_str, True, TEXT_COLOR)
     screen.blit(lives_text, (w - lives_text.get_width() - 10, 10))
     # pause indicator
     if getattr(scene, 'paused', False):

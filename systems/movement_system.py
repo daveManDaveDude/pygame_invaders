@@ -24,8 +24,10 @@ def _update_attacker(scene, dt):
     # horizontal base aiming directly toward current player position
     player_x = scene.player.rect.centerx
     base_x = attacker.start_x + (player_x - attacker.start_x) * tau
-    # single sine oscillation about the base path
-    x_offset = DIVE_AMPLITUDE * math.sin(2 * math.pi * tau)
+    # lateral chase: determine side (1=right, -1=left)
+    chase_dir = math.copysign(1.0, player_x - attacker.start_x)
+    # single sine oscillation about the base path, oriented toward player
+    x_offset = DIVE_AMPLITUDE * math.sin(2 * math.pi * tau) * chase_dir
     new_x = int(round(base_x + x_offset))
     # vertical interpolation down to bottom
     new_y = int(round(attacker.start_y + (HEIGHT - attacker.start_y) * tau))

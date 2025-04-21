@@ -45,6 +45,8 @@ class PlayScene:
         # schedule the first attack (5–10 seconds)
         self.next_attack_at = now + random.randint(5000, 10000)
         self.attacker_original_pos = None
+        # invulnerability toggle (cheat): if True, player cannot lose lives from shots
+        self.invulnerable = False
 
     def _create_enemies(self):
         from config import ROWS, COLS, ENEMY_MARGIN_X, ENEMY_MARGIN_Y, ENEMY_SPACING_X, ENEMY_SPACING_Y
@@ -52,7 +54,10 @@ class PlayScene:
             for col in range(COLS):
                 x = ENEMY_MARGIN_X + col * ENEMY_SPACING_X
                 y = ENEMY_MARGIN_Y + row * ENEMY_SPACING_Y
-                self.enemies.add(Enemy((x, y)))
+                enemy = Enemy((x, y))
+                # tag with grid coordinates for respawn positioning
+                enemy.grid_pos = (row, col)
+                self.enemies.add(enemy)
     
     def spawn_attacker(self):
         """Detach a random invader from the pack to begin a dive attack."""
@@ -67,8 +72,8 @@ class PlayScene:
         bottom_y = max(ys)
         bottom_aliens = [e for e in self.enemies.sprites() if e.rect.y == bottom_y]
         attacker = random.choice(bottom_aliens)
-        # record its original position for later respawn
-        self.attacker_original_pos = attacker.rect.topleft
+        # record its grid cell for later respawn
+        # attacker.grid_pos already set in creation
         # remove from pack and set as current attacker
         self.enemies.remove(attacker)
         self.attacker = attacker
@@ -81,9 +86,25 @@ class PlayScene:
     def on_attacker_finished(self, missed):
         """Handle end of a dive attack: respawn if missed, schedule next attack."""
         now = pygame.time.get_ticks()
-        # if missed, put attacker back into pack at original pos
+        # if missed, put attacker back into pack at its grid position with current pack offset
         if missed and self.attacker:
-            self.attacker.rect.topleft = self.attacker_original_pos
+            # compute current pack offset
+            dx = dy = 0
+            if self.enemies:
+                # any remaining enemy shares pack offset
+                sample = next(iter(self.enemies))
+                r0, c0 = sample.grid_pos
+                from config import ENEMY_MARGIN_X, ENEMY_MARGIN_Y, ENEMY_SPACING_X, ENEMY_SPACING_Y
+                init_x0 = ENEMY_MARGIN_X + c0 * ENEMY_SPACING_X
+                init_y0 = ENEMY_MARGIN_Y + r0 * ENEMY_SPACING_Y
+                dx = sample.rect.x - init_x0
+                dy = sample.rect.y - init_y0
+            # compute respawn position based on grid
+            row, col = self.attacker.grid_pos
+            from config import ENEMY_MARGIN_X, ENEMY_MARGIN_Y, ENEMY_SPACING_X, ENEMY_SPACING_Y
+            init_x = ENEMY_MARGIN_X + col * ENEMY_SPACING_X
+            init_y = ENEMY_MARGIN_Y + row * ENEMY_SPACING_Y
+            self.attacker.rect.topleft = (init_x + dx, init_y + dy)
             self.enemies.add(self.attacker)
         # clear attacker state
         self.attacker = None
@@ -95,6 +116,15 @@ class PlayScene:
         for event in events:
             # shoot when not paused or hit
             if event.type == pygame.KEYDOWN:
+                # cheat toggle: invulnerability to enemy bullets
+                if event.key == pygame.K_l:
+                    self.invulnerable = not self.invulnerable
+                    continue
+                # debug: force spawn attacker dive
+                elif event.key == pygame.K_d:
+                    if self.attacker is None:
+                        self.spawn_attacker()
+                    continue
                 if event.key == pygame.K_SPACE and not self.hit and not self.paused:
                     now = pygame.time.get_ticks()
                     self.player.shoot(now, self.bullets)
