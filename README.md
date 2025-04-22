@@ -80,7 +80,7 @@ All tunable parameters live in `` — screen size, player & enemy speeds, dive a
 - Power‑ups & different enemy types
 - Mobile / touch controls via Pygbag export
 
-*Pull requests are very welcome!* Feel free to open an issue to discuss features. The only rule is that the code HAS to be written by AI and only AL!
+*Pull requests are very welcome!* Feel free to open an issue to discuss features. The only rule is that the code HAS to be written by AI and only AI!
 
 ## 📄 License
 
